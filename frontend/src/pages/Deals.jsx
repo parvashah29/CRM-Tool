@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../lib/api';
+import api, { errorMessage } from '../lib/api';
 import { Plus, DollarSign } from 'lucide-react';
 
 const STAGES = ['New', 'Negotiation', 'Won', 'Lost'];
@@ -45,7 +45,7 @@ export default function Deals() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await api.post('/deals/', formData);
+            await api.post('/deals/', { ...formData, value: Number(formData.value) });
             setFormData({
                 title: '',
                 value: '',
@@ -57,7 +57,32 @@ export default function Deals() {
             fetchDeals();
         } catch (error) {
             console.error('Error creating deal:', error);
+            alert(errorMessage(error, 'Failed to create deal'));
         }
+    };
+
+    const changeStage = async (deal, stage) => {
+        try {
+            const res = await api.put(`/deals/${deal.id}`, { stage });
+            setDeals(prev => prev.map(d => (d.id === deal.id ? res.data : d)));
+        } catch (error) {
+            alert(errorMessage(error, 'Failed to update deal'));
+        }
+    };
+
+    const deleteDeal = async (deal) => {
+        if (!confirm(`Delete deal "${deal.title}"?`)) return;
+        try {
+            await api.delete(`/deals/${deal.id}`);
+            setDeals(prev => prev.filter(d => d.id !== deal.id));
+        } catch (error) {
+            alert(errorMessage(error, 'Failed to delete deal'));
+        }
+    };
+
+    const contactName = (id) => {
+        const c = contacts.find(c => c.id === id);
+        return c ? `${c.first_name} ${c.last_name}`.trim() : null;
     };
 
     const handleChange = (e) => {
@@ -134,6 +159,7 @@ export default function Deals() {
                 </div>
             )}
 
+            {loading && <p className="text-gray-500 mb-2">Loading...</p>}
             <div className="flex gap-6 overflow-x-auto pb-4 h-[calc(100vh-12rem)]">
                 {STAGES.map(stage => {
                     const stageDeals = deals.filter(d => d.stage === stage);
@@ -146,14 +172,28 @@ export default function Deals() {
                             <div className="space-y-3 overflow-y-auto flex-1 pr-2">
                                 {stageDeals.map(deal => (
                                     <div key={deal.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer">
-                                        <h4 className="font-medium text-gray-900 mb-1">{deal.title}</h4>
+                                        <div className="flex justify-between items-start gap-2">
+                                            <h4 className="font-medium text-gray-900 mb-1">{deal.title}</h4>
+                                            <button onClick={() => deleteDeal(deal)} className="text-gray-300 hover:text-red-500 text-xs" aria-label="Delete deal">✕</button>
+                                        </div>
                                         <div className="flex items-center text-green-600 font-medium text-sm mb-2">
                                             <DollarSign size={14} className="mr-1" />
-                                            {deal.value}
+                                            {Number(deal.value).toLocaleString()}
                                         </div>
-                                        <div className="text-xs text-gray-500">
+                                        {contactName(deal.contact_id) && (
+                                            <div className="text-xs text-gray-600 mb-1">{contactName(deal.contact_id)}</div>
+                                        )}
+                                        <div className="text-xs text-gray-500 mb-2">
                                             Close: {deal.expected_close_date || 'N/A'}
                                         </div>
+                                        <select
+                                            value={deal.stage}
+                                            onChange={(e) => changeStage(deal, e.target.value)}
+                                            className="text-xs border rounded p-1 w-full text-gray-600"
+                                            aria-label="Change stage"
+                                        >
+                                            {STAGES.map(st => <option key={st} value={st}>{st}</option>)}
+                                        </select>
                                     </div>
                                 ))}
                             </div>

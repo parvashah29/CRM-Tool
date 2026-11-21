@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import api from '../lib/api';
-import { Plus, CheckCircle, Circle } from 'lucide-react';
+import api, { errorMessage } from '../lib/api';
+import { Plus, CheckCircle, Circle, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function Tasks() {
@@ -41,6 +41,7 @@ export default function Tasks() {
             fetchTasks();
         } catch (error) {
             console.error('Error creating task:', error);
+            alert(errorMessage(error, 'Failed to create task'));
         }
     };
 
@@ -48,8 +49,23 @@ export default function Tasks() {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    // Note: Toggle complete not fully implemented in backend beyond update shell
-    // Ideally: await api.put(`/tasks/${taskId}`, { is_completed: !currentStatus })
+    const toggleTask = async (task) => {
+        try {
+            const res = await api.put(`/tasks/${task.id}`, { is_completed: !task.is_completed });
+            setTasks(prev => prev.map(t => (t.id === task.id ? res.data : t)));
+        } catch (error) {
+            alert(errorMessage(error, 'Failed to update task'));
+        }
+    };
+
+    const deleteTask = async (task) => {
+        try {
+            await api.delete(`/tasks/${task.id}`);
+            setTasks(prev => prev.filter(t => t.id !== task.id));
+        } catch (error) {
+            alert(errorMessage(error, 'Failed to delete task'));
+        }
+    };
 
     return (
         <div>
@@ -100,10 +116,11 @@ export default function Tasks() {
                 </div>
             )}
 
+            {loading && <p className="text-gray-500 mb-2">Loading...</p>}
             <div className="space-y-3">
                 {tasks.map((task) => (
                     <div key={task.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-start gap-4 hover:shadow-md transition-shadow">
-                        <button className={clsx("mt-1", task.is_completed ? "text-green-500" : "text-gray-300 hover:text-gray-400")}>
+                        <button onClick={() => toggleTask(task)} aria-label="Toggle complete" className={clsx("mt-1", task.is_completed ? "text-green-500" : "text-gray-300 hover:text-gray-400")}>
                             {task.is_completed ? <CheckCircle size={24} /> : <Circle size={24} />}
                         </button>
                         <div className="flex-1">
@@ -111,6 +128,9 @@ export default function Tasks() {
                             <p className="text-gray-600 text-sm mt-1">{task.description}</p>
                             {task.due_date && <div className="text-xs text-gray-400 mt-2">Due: {task.due_date}</div>}
                         </div>
+                        <button onClick={() => deleteTask(task)} className="text-gray-300 hover:text-red-500" aria-label="Delete task">
+                            <Trash2 size={18} />
+                        </button>
                     </div>
                 ))}
                 {tasks.length === 0 && (

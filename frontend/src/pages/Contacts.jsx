@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import api from '../lib/api';
-import { Plus, Search, User } from 'lucide-react';
+import api, { errorMessage } from '../lib/api';
+import { Plus, Trash2, User } from 'lucide-react';
 
 export default function Contacts() {
     const [contacts, setContacts] = useState([]);
@@ -46,7 +46,17 @@ export default function Contacts() {
             fetchContacts();
         } catch (error) {
             console.error('Error creating contact:', error);
-            alert('Failed to create contact');
+            alert(errorMessage(error, 'Failed to create contact'));
+        }
+    };
+
+    const handleDelete = async (contact) => {
+        if (!confirm(`Delete ${contact.first_name} ${contact.last_name}?`)) return;
+        try {
+            await api.delete(`/contacts/${contact.id}`);
+            setContacts(prev => prev.filter(c => c.id !== contact.id));
+        } catch (error) {
+            alert(errorMessage(error, 'Failed to delete contact'));
         }
     };
 
@@ -147,6 +157,7 @@ export default function Contacts() {
                                 <th className="p-4 font-semibold text-gray-600">Email</th>
                                 <th className="p-4 font-semibold text-gray-600">Phone</th>
                                 <th className="p-4 font-semibold text-gray-600">Company</th>
+                                <th className="p-4"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -164,11 +175,16 @@ export default function Contacts() {
                                     <td className="p-4 text-gray-600">{contact.email}</td>
                                     <td className="p-4 text-gray-600">{contact.phone}</td>
                                     <td className="p-4 text-gray-600 font-medium">{contact.company}</td>
+                                    <td className="p-4 text-right">
+                                        <button onClick={() => handleDelete(contact)} className="text-gray-300 hover:text-red-500" aria-label="Delete contact">
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </td>
                                 </tr>
                             ))}
                             {contacts.length === 0 && (
                                 <tr>
-                                    <td colSpan="4" className="p-8 text-center text-gray-500">
+                                    <td colSpan="5" className="p-8 text-center text-gray-500">
                                         No contacts found. Create one to get started.
                                     </td>
                                 </tr>

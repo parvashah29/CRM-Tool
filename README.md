@@ -14,20 +14,23 @@ A modern, full-stack Customer Relationship Management (CRM) application built wi
 ### 📇 **Contact Management**
 - Create, view, update, and delete contacts
 - Store essential contact details (name, email, phone, company, position)
-- Searchable contact directory
-- Clean table view with user-friendly interface
+- Unique email enforcement, clean table view
+- Deleting a contact keeps its deals (they are simply unlinked)
 
 ### 💼 **Deals Pipeline**
 - Visual Kanban-style deal tracking
 - Pipeline stages: **New** → **Negotiation** → **Won** / **Lost**
 - Link deals to contacts
 - Track deal values and expected close dates
-- Drag-and-drop ready interface design
+- Move deals between stages from the card's stage dropdown
+
+### 📊 **Dashboard**
+- Live totals: contacts, open pipeline value, won revenue, open tasks, deals per stage
 
 ### ✅ **Task Management**
 - Create and track tasks with due dates
 - Task descriptions for detailed context
-- Visual completion status indicators
+- One-click completion toggle
 - Link tasks to deals or contacts
 
 ---
@@ -38,9 +41,11 @@ A modern, full-stack Customer Relationship Management (CRM) application built wi
 | Technology | Purpose |
 |------------|---------|
 | **FastAPI** | Modern, high-performance Python web framework |
+| **SQLAlchemy + SQLite** | Persistent storage (`backend/crm.db`, created automatically) |
 | **Pydantic** | Data validation and serialization |
+| **pytest** | API tests (`cd backend && pytest`) |
 | **Uvicorn** | ASGI server for FastAPI |
-| **Python 3.8+** | Runtime environment |
+| **Python 3.10+** | Runtime environment |
 
 ### Frontend
 | Technology | Purpose |
@@ -62,7 +67,9 @@ CRM Tool/
 ├── backend/                    # FastAPI Backend
 │   ├── main.py                # API endpoints and app configuration
 │   ├── schemas.py             # Pydantic models for validation
-│   ├── database.py            # In-memory database simulation
+│   ├── database.py            # SQLAlchemy engine/session (SQLite)
+│   ├── models.py              # ORM tables
+│   ├── tests/                 # pytest API tests
 │   ├── crud.py                # CRUD operations
 │   ├── requirements.txt       # Python dependencies
 │   └── venv/                  # Virtual environment
@@ -87,9 +94,6 @@ CRM Tool/
 │   └── vite.config.js         # Vite configuration
 │
 ├── start_app.sh               # Startup script for both servers
-├── dashboard.html             # Standalone dashboard prototype
-├── contact_manager.html       # Standalone contacts prototype
-├── pipeline.html              # Standalone pipeline prototype
 └── README.md                  # This file
 ```
 
@@ -98,7 +102,7 @@ CRM Tool/
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Python 3.8+** installed
+- **Python 3.10+** installed
 - **Node.js 18+** and npm installed
 
 ### One-Command Start
@@ -124,6 +128,9 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Run the tests (optional)
+pytest
 
 # Start the server
 uvicorn main:app --reload --port 8000
@@ -285,7 +292,7 @@ npm run build
 
 ## 📝 Future Enhancements
 
-- [ ] Persistent database (PostgreSQL/SQLite)
+- [x] Persistent database (SQLite)
 - [ ] User authentication and authorization
 - [ ] Export contacts/deals to CSV
 - [ ] Email integration

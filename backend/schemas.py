@@ -1,88 +1,121 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
 from enum import Enum
+from typing import Optional
 
-# --- Enums ---
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+
 class DealStage(str, Enum):
-    LEAD = "Lead"
-    CONTACTED = "Contacted"
+    NEW = "New"
     NEGOTIATION = "Negotiation"
-    CLOSED_WON = "Closed Won"
-    CLOSED_LOST = "Closed Lost"
+    WON = "Won"
+    LOST = "Lost"
 
-class TaskStatus(str, Enum):
-    TODO = "To Do"
-    IN_PROGRESS = "In Progress"
-    DONE = "Done"
+
+def _blank_to_none(v):
+    """HTML forms send '' for empty optional fields; treat that as 'not provided'."""
+    return None if isinstance(v, str) and v.strip() == "" else v
+
+
+class _BlankToNone(BaseModel):
+    @field_validator("*", mode="before")
+    @classmethod
+    def _clean(cls, v):
+        return _blank_to_none(v)
+
 
 # --- Contacts ---
-class ContactBase(BaseModel):
-    name: str = Field(..., min_length=1, example="John Doe")
-    email: EmailStr = Field(..., example="john@example.com")
-    phone: Optional[str] = Field(None, example="+1234567890")
-    company: Optional[str] = Field(None, example="Acme Corp")
-    position: Optional[str] = Field(None, example="CEO")
+class ContactBase(_BlankToNone):
+    first_name: str = Field(..., min_length=1, max_length=100, examples=["John"])
+    last_name: str = Field("", max_length=100, examples=["Doe"])
+    email: EmailStr = Field(..., examples=["john@example.com"])
+    phone: Optional[str] = Field(None, examples=["+1234567890"])
+    company: Optional[str] = Field(None, examples=["Acme Corp"])
+    position: Optional[str] = Field(None, examples=["CEO"])
+
+    @field_validator("last_name", mode="before")
+    @classmethod
+    def _last_name_default(cls, v):
+        return "" if v is None else v
+
 
 class ContactCreate(ContactBase):
     pass
 
-class ContactUpdate(BaseModel):
-    name: Optional[str] = None
+
+class ContactUpdate(_BlankToNone):
+    first_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    last_name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     company: Optional[str] = None
     position: Optional[str] = None
 
+
 class Contact(ContactBase):
+    model_config = ConfigDict(from_attributes=True)
     id: int
 
-    class Config:
-        from_attributes = True
 
 # --- Deals ---
-class DealBase(BaseModel):
-    title: str = Field(..., min_length=1, example="Big Sale")
-    value: float = Field(..., gt=0, example=10000.0)
-    stage: DealStage = Field(default=DealStage.LEAD)
+class DealBase(_BlankToNone):
+    title: str = Field(..., min_length=1, max_length=200, examples=["Big Sale"])
+    value: float = Field(..., gt=0, examples=[10000.0])
+    stage: DealStage = DealStage.NEW
     contact_id: Optional[int] = Field(None, description="Linked contact ID")
+    expected_close_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$", examples=["2026-12-31"])
+
 
 class DealCreate(DealBase):
     pass
 
-class DealUpdate(BaseModel):
-    title: Optional[str] = None
-    value: Optional[float] = None
+
+class DealUpdate(_BlankToNone):
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    value: Optional[float] = Field(None, gt=0)
     stage: Optional[DealStage] = None
     contact_id: Optional[int] = None
+    expected_close_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+
 
 class Deal(DealBase):
+    model_config = ConfigDict(from_attributes=True)
     id: int
 
-    class Config:
-        from_attributes = True
 
 # --- Tasks ---
-class TaskBase(BaseModel):
-    title: str = Field(..., min_length=1, example="Follow up call")
-    description: Optional[str] = Field(None, example="Discuss contract details")
-    status: TaskStatus = Field(default=TaskStatus.TODO)
-    due_date: Optional[str] = Field(None, description="ISO sequence date string")
+class TaskBase(_BlankToNone):
+    title: str = Field(..., min_length=1, max_length=200, examples=["Follow up call"])
+    description: Optional[str] = None
+    due_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$", examples=["2026-12-01"])
+    is_completed: bool = False
     related_deal_id: Optional[int] = None
     related_contact_id: Optional[int] = None
+
 
 class TaskCreate(TaskBase):
     pass
 
-class TaskUpdate(BaseModel):
-    title: Optional[str] = None
+
+class TaskUpdate(_BlankToNone):
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
-    status: Optional[TaskStatus] = None
-    due_date: Optional[str] = None
+    due_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    is_completed: Optional[bool] = None
     related_deal_id: Optional[int] = None
     related_contact_id: Optional[int] = None
 
+
 class Task(TaskBase):
+    model_config = ConfigDict(from_attributes=True)
     id: int
 
-    class Config:
-        from_attributes = True
+
+# --- Dashboard ---
+class Stats(BaseModel):
+    contacts: int
+    deals: int
+    open_pipeline_value: float
+    won_value: float
+    tasks_open: int
+    tasks_done: int
+    deals_by_stage: dict[str, int]

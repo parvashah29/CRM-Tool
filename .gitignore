@@ -27,3 +27,4 @@ flask_session/
 uploads/
 *.sqlite
 *.sqlite3
+*.db
